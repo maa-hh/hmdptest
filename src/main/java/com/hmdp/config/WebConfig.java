@@ -19,7 +19,10 @@ public class WebConfig implements WebMvcConfigurer {
                         "/user/login",      // 登录接口
                         "/user/code",
                         "/shop/**",   // 注册接口
-                        "/error"       // 错误页
+                        "/blog/hot/**",
+                        "/shop-type/**",
+                        "/voucher/**",
+                        "/upload/**"
                 ) .order(1);
     }
 }

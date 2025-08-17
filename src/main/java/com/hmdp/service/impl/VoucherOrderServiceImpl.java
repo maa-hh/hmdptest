@@ -85,23 +85,25 @@ public class VoucherOrderServiceImpl
 public Result seckillVoucher(Long voucherId) {
     Long userId = UserHolder.getUser().getId();
 
-    // 一人一单 + 并发安全（先锁用户）分布式时会失效，单机有效
-
-        // 再次校验一人一单（防止并发绕过）
-        int count = query().eq("user_id", userId)
-                .eq("voucher_id", voucherId).count();
-        if (count > 0) {
-            return Result.fail("一人只能购买一次");
-        }
-
         // 校验秒杀时间
         SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
+    if (voucher == null) {
+        return Result.fail("秒杀券不存在");
+    }
         if (voucher.getBeginTime().isAfter(LocalDateTime.now())) {
             return Result.fail("活动尚未开始");
         }
         if (voucher.getEndTime().isBefore(LocalDateTime.now())) {
             return Result.fail("活动已结束");
         }
+    // 一人一单 + 并发安全（先锁用户）分布式时会失效，单机有效
+
+    // 再次校验一人一单（防止并发绕过）
+    int count = query().eq("user_id", userId)
+            .eq("voucher_id", voucherId).count();
+    if (count > 0) {
+        return Result.fail("一人只能购买一次");
+    }
     RedisLock redisLock=new RedisLock(redisTemplate,"order:"+userId.toString());
         //boolean lock=redisLock.tryLock(1200);
     //Redisson可重入锁

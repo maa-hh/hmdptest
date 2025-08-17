@@ -14,8 +14,8 @@ public class RedissonConfig {
         Config config = new Config();
         // 单机模式
         config.useSingleServer()
-                .setAddress("redis://127.0.0.1:6379");
-                //.setPassword("yourPassword") // 如果有密码
+                .setAddress("redis://192.168.0.104:6379")
+                .setPassword("123456") ;// 如果有密码
         return Redisson.create(config);
     }
 }

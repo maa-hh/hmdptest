@@ -136,7 +136,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         }
     }
     @Override
-    @Transactional
+    @Transactional//可加可不加，多条数据库语句就加事务
     public Result updateShop(Shop shop) {
         Long id=shop.getId();
         String key="cache:shop"+id;
