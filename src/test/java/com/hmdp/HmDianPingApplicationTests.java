@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hmdp.entity.User;
 import org.junit.jupiter.api.Test;
+import org.redisson.RedissonRedLock;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -92,5 +93,39 @@ class HmDianPingApplicationTests {
         userFromHash.setId(Long.valueOf(map.get("id").toString()));
         userFromHash.setNickName(map.get("name").toString());
 
+    }
+
+    @Autowired
+    private RedissonClient redissonClient1;
+
+    @Autowired
+    private RedissonClient redissonClient2;
+
+    @Autowired
+    private RedissonClient redissonClient3;
+    @Test
+    public void testRedLock() {
+        // 分别从三个客户端获取锁
+        RLock lock1 = redissonClient1.getLock("myLock");
+        RLock lock2 = redissonClient2.getLock("myLock");
+        RLock lock3 = redissonClient3.getLock("myLock");
+
+        // 组装成 Lock
+        RLock lock=redissonClient.getMultiLock(lock1,lock2,lock3);
+
+        try {
+            boolean isLock = lock.tryLock(10, 30, TimeUnit.SECONDS);
+            if (isLock) {
+                System.out.println("✅ 成功获取 RedLock 分布式锁");
+                Thread.sleep(5000); // 模拟业务逻辑
+            } else {
+                System.out.println("❌ 获取 Lock 分布式锁失败");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            lock.unlock();
+            System.out.println("🔓 锁已释放");
+        }
     }
 }

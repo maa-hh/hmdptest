@@ -10,6 +10,7 @@ import com.hmdp.service.IBlogService;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.SystemConstants;
 import com.hmdp.utils.UserHolder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -42,13 +43,13 @@ public class BlogController {
         // 返回id
         return Result.ok(blog.getId());
     }
-
+    @GetMapping("/{id}")
+    public Result queryBlogById(Long id){
+        return blogService.queryBlogById(id);
+    }
     @PutMapping("/like/{id}")
     public Result likeBlog(@PathVariable("id") Long id) {
-        // 修改点赞数量
-        blogService.update()
-                .setSql("liked = liked + 1").eq("id", id).update();
-        return Result.ok();
+       return blogService.likeBlog(id);
     }
 
     @GetMapping("/of/me")

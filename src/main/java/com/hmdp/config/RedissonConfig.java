@@ -9,14 +9,31 @@ import org.springframework.context.annotation.Configuration;
 
 public class RedissonConfig {
 
-    @Bean(destroyMethod="shutdown") // 容器关闭时关闭 Redisson
-    public RedissonClient redissonClient() {
+    @Bean(destroyMethod = "shutdown")
+    public RedissonClient redissonClient1() {
         Config config = new Config();
-        // 单机模式
         config.useSingleServer()
-                .setAddress("redis://192.168.0.104:6379")
-                .setPassword("123456") ;// 如果有密码
+                .setAddress("redis://192.168.0.101:6379")
+                .setPassword("123456");
         return Redisson.create(config);
     }
+
+//    @Bean(destroyMethod = "shutdown")
+//    public RedissonClient redissonClient2() {
+//        Config config = new Config();
+//        config.useSingleServer()
+//                .setAddress("redis://192.168.0.102:6379")
+//                .setPassword("123456");
+//        return Redisson.create(config);
+//    }
+//
+//    @Bean(destroyMethod = "shutdown")
+//    public RedissonClient redissonClient3() {
+//        Config config = new Config();
+//        config.useSingleServer()
+//                .setAddress("redis://192.168.0.103:6379")
+//                .setPassword("123456");
+//        return Redisson.create(config);
+//    }
 }
 
