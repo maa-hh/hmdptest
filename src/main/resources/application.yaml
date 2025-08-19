@@ -3,12 +3,19 @@ server:
 spring:
   application:
     name: hmdp
+  config:
+    import: optional:file:///D:/IDEAJAVA/application-secret.yml
+
   datasource:
     url: jdbc:mysql://localhost:3306/hmdp?useSSL=false&serverTimezone=UTC
     username: root
     password: 123456
     driver-class-name: com.mysql.jdbc.Driver
   redis:
+#    sentinel:
+#      master: mymaster
+#      nodes: #指定sentinelde集群信息 配了sentinel host port password可以省略
+#        - 192.168.150.101:270001
     host: 192.168.0.104
     port: 6379
     password: 123456

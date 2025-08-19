@@ -1,18 +1,21 @@
 package com.hmdp;
 
-import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.hmdp.entity.User;
 import org.junit.jupiter.api.Test;
 import org.redisson.RedissonRedLock;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -106,9 +109,9 @@ class HmDianPingApplicationTests {
     @Test
     public void testRedLock() {
         // 分别从三个客户端获取锁
-        RLock lock1 = redissonClient1.getLock("myLock");
-        RLock lock2 = redissonClient2.getLock("myLock");
-        RLock lock3 = redissonClient3.getLock("myLock");
+        RLock lock1 = redissonClient1.getLock("myLock1");
+        RLock lock2 = redissonClient2.getLock("myLock2");
+        RLock lock3 = redissonClient3.getLock("myLock3");
 
         // 组装成 Lock
         RLock lock=redissonClient.getMultiLock(lock1,lock2,lock3);
@@ -127,5 +130,31 @@ class HmDianPingApplicationTests {
             lock.unlock();
             System.out.println("🔓 锁已释放");
         }
+    }
+    @Test
+    //基于算法进行数量统计，有误差，UV统计
+    public void testHypreLogLog(){
+        String [] content=new String[1000];
+        int index=0;
+        for(int i=0;i<1000_000;i++){
+            content[index++]="user"+index;
+            if(index==1000){
+                index=0;
+                redis.opsForHyperLogLog().add("hyper",content);
+            }
+        }
+        Long size=redis.opsForHyperLogLog().size("hyper");
+        System.out.println(size);
+    }
+    @Test
+    public  void testCaffine() throws InterruptedException {
+        Cache<String, String> cache = Caffeine.newBuilder()
+                .maximumSize(12)
+                .expireAfterWrite(Duration.ofSeconds(20))
+                .build();
+        cache.put("gf","123");
+        Thread.sleep(20);
+        String ans=cache.getIfPresent("gf");
+        cache.get("gf",(key)->{return "elsemethod";});
     }
 }

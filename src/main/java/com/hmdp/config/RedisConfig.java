@@ -3,6 +3,8 @@ package com.hmdp.config;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.lettuce.core.ReadFrom;
+import org.springframework.boot.autoconfigure.data.redis.LettuceClientConfigurationBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -34,6 +36,12 @@ public class RedisConfig {
 
         template.afterPropertiesSet();
         return template;
+    }
+    @Bean
+    //主从读写分离
+    public LettuceClientConfigurationBuilderCustomizer customizer(){
+        //SLAVE_PREFERRED MASTER MASTER_PREFERRED
+        return configBuilder->configBuilder.readFrom(ReadFrom.REPLICA_PREFERRED);
     }
 }
 

@@ -1,6 +1,7 @@
 package com.hmdp.service.impl;
 
 import cn.hutool.core.io.resource.ClassPathResource;
+import com.baomidou.mybatisplus.annotation.Version;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.entity.VoucherOrder;
@@ -181,12 +182,13 @@ public Result seckillVoucher(Long voucherId) {
     return Result.ok(orderId);
 }
 
+
     @Transactional
-    public VoucherOrder createVoucherOrder(Long voucherId, Long userId) {
+    public VoucherOrder createVoucherOrder(VoucherOrder voucherOrder) {
         // 1. 再次校验一人一单（防止并发绕过）
         int count = query()
-                .eq("user_id", userId)
-                .eq("voucher_id", voucherId)
+                .eq("user_id", voucherOrder.getUserId())
+                .eq("voucher_id", voucherOrder.getVoucherId())
                 .count();
         if (count > 0) {
             throw new RuntimeException("一人只能购买一次");
@@ -195,19 +197,32 @@ public Result seckillVoucher(Long voucherId) {
         // 2. 扣减库存（乐观锁，非事务）
         boolean success = seckillVoucherService.update()
                 .setSql("stock = stock - 1")   // stock = stock - 1
-                .eq("voucher_id", voucherId)  // where voucher_id = ?
+                .eq("voucher_id", voucherOrder.getVoucherId())  // where voucher_id = ?
                 .gt("stock", 0)               // and stock > 0
                 .update();
         if (!success) {
             throw new RuntimeException("库存不足");
         }
-
+//        // 1. 先查询当前版本
+//        SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
+//        int currentVersion = voucher.getVersion();
+//
+//// 2. 扣减库存 + 乐观锁更新
+//        boolean success = seckillVoucherService.update()
+//                .setSql("stock = stock - 1")         // 扣减库存
+//                .eq("voucher_id", voucherId)         // 条件 voucher_id
+//                .eq("version", currentVersion)       // 乐观锁条件 version = 当前版本
+//                .update();
+//        有专门的@Version 注解
+//        boolean success = seckillVoucherService.update()
+//                .setSql("stock = stock - 1")
+//                .eq("voucher_id", voucherId)
+//                .update();
+//        synchronized(userId.toString().intern()) {
+//            // 处理同一个用户的下单逻辑
+//            intern() 的作用就是让相同内容的字符串引用唯一，从而可以作为 synchronized 的锁对象，保证单机环境下同一资源的互斥访问。
+//        }
         // 3. 创建订单
-        VoucherOrder voucherOrder = new VoucherOrder();
-        long orderId = redisIdWorker.nextId("order");
-        voucherOrder.setId(orderId);
-        voucherOrder.setUserId(userId);
-        voucherOrder.setVoucherId(voucherId);
 
         save(voucherOrder);
 

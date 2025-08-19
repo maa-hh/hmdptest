@@ -14,16 +14,17 @@ import com.hmdp.utils.RegexUtils;
 import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
 
 import javax.servlet.http.HttpSession;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -98,6 +99,57 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         UserHolder.saveUser(userDTO);
         return Result.ok(token);
     }
+
+    @Override
+    public Result sign() {
+        Long userId = UserHolder.getUser().getId();   // 1. 获取当前登录用户 ID
+        LocalDateTime now = LocalDateTime.now();      // 2. 获取当前时间
+
+        // 3. 拼接 Redis key，区分用户和月份
+        String key = "user:sign:" + userId + ":" + now.getYear() + ":" + now.getMonthValue();
+        int dayOfMonth = now.getDayOfMonth();         // 4. 今天是几号，比如 8月20号 → 20
+        // 5. 在 Redis 的 "位图" 里，把今天的位置标记为 1，表示已签到
+        redisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
+        return Result.ok();
+    }
+
+
+
+    @Override
+    public Result signCount() {
+        Long userId = UserHolder.getUser().getId();
+        LocalDateTime now = LocalDateTime.now();
+        String key = "user:sign:" + userId + ":" + now.getYear() + ":" + now.getMonthValue();
+        int dayOfMonth = now.getDayOfMonth();
+
+        // 取本月截至今天的签到数据
+        List<Long> result = redisTemplate.opsForValue().bitField(
+                key,
+                BitFieldSubCommands.create()
+                        .get(BitFieldSubCommands.BitFieldType.unsigned(dayOfMonth)) // 取 dayOfMonth 位
+                        .valueAt(0) // 从第0位开始
+        );
+
+        if (result == null || result.isEmpty() || result.get(0) == null) {
+            return Result.ok(0);
+        }
+        //将签到情况转为long
+        long num = result.get(0);
+
+        // 统计连续签到天数（从今天往前）
+        int count = 0;
+        for (int i = 0; i < dayOfMonth; i++) {
+            if ((num & 1) == 0) {
+                break; // 遇到 0 表示中断
+            } else {
+                count++;
+            }
+            num >>= 1; // 右移一位，继续检查前一天
+        }
+
+        return Result.ok(count);
+    }
+
 
     private User createUserWithPhone(String phone) {
         User user = new User();

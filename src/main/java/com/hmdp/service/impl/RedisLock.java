@@ -20,8 +20,8 @@ public class RedisLock implements ILock {
         this.redisTemplate = redisTemplate;
         this.name = name;
         this.key = "lock:" + name;
-        //this.value = Thread.currentThread().getId(); // 唯一标识
-        this.value = UUID.randomUUID().getMostSignificantBits();
+        this.value = Thread.currentThread().getId(); // 唯一标识
+        //this.value = UUID.randomUUID().getMostSignificantBits();
     }
 
     @Override
