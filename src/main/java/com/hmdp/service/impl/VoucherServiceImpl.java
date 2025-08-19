@@ -52,4 +52,6 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         seckillVoucherService.save(seckillVoucher);
         redisTemplate.opsForValue().set("seckil:stock:"+voucher.getId(),voucher.getStock().toString());
     }
+
+
 }

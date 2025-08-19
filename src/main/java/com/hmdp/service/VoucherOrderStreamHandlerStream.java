@@ -19,9 +19,9 @@ import java.util.concurrent.*;
 public class VoucherOrderStreamHandlerStream implements InitializingBean {
     @Autowired
     RedissonClient redissonClient;
-    @Resource
+    @Autowired
     private StringRedisTemplate redisTemplate;
-    @Resource
+    @Autowired
     private IVoucherOrderService voucherOrderService;
 
     private static final String STREAM_KEY = "stream:orders";
@@ -80,12 +80,12 @@ public class VoucherOrderStreamHandlerStream implements InitializingBean {
                 log.warn("用户{}获取锁失败", userId);
                 return;
             }
-            // 保存订单
+            // 创建订单
             VoucherOrder order = new VoucherOrder();
             order.setId(orderId);
             order.setUserId(userId);
             order.setVoucherId(voucherId);
-            voucherOrderService.save(order);
+            voucherOrderService.createVoucherOrder(order);
         } catch (Exception e) {
             log.error("创建订单失败", e);
         } finally {

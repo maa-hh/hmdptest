@@ -106,9 +106,9 @@ class HmDianPingApplicationTests {
     @Test
     public void testRedLock() {
         // 分别从三个客户端获取锁
-        RLock lock1 = redissonClient1.getLock("myLock");
-        RLock lock2 = redissonClient2.getLock("myLock");
-        RLock lock3 = redissonClient3.getLock("myLock");
+        RLock lock1 = redissonClient1.getLock("myLock1");
+        RLock lock2 = redissonClient2.getLock("myLock2");
+        RLock lock3 = redissonClient3.getLock("myLock3");
 
         // 组装成 Lock
         RLock lock=redissonClient.getMultiLock(lock1,lock2,lock3);

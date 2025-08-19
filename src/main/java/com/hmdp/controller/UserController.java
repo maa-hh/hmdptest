@@ -1,6 +1,7 @@
 package com.hmdp.controller;
 
 
+import cn.hutool.core.bean.BeanUtil;
 import com.hmdp.dto.LoginFormDTO;
 import com.hmdp.dto.Result;
 import com.hmdp.dto.UserDTO;
@@ -43,7 +44,14 @@ public class UserController {
         //return userService.sendCode(phone,session);
         return userService.sendCode(phone);
     }
-
+    @GetMapping("/{id}")
+    public Result queryUserById(@PathVariable("id") Long id){
+        User user=userService.getById(id);
+        if(user==null)
+            return Result.ok();
+        UserDTO userDTO= BeanUtil.copyProperties(user,UserDTO.class);
+        return Result.ok(userDTO);
+    }
     /**
      * 登录功能
      * @param loginForm 登录参数，包含手机号、验证码；或者手机号、密码
@@ -83,5 +91,13 @@ public class UserController {
         info.setUpdateTime(null);
         // 返回
         return Result.ok(info);
+    }
+    @PostMapping("/sign")
+    public Result sign(){
+        return userService.sign();
+    }
+    @GetMapping("/sign/count")
+    public Result signCount(){
+        return userService.signCount();
     }
 }
