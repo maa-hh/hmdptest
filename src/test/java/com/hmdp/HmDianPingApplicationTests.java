@@ -6,19 +6,29 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.hmdp.entity.User;
 import org.junit.jupiter.api.Test;
-import org.redisson.RedissonRedLock;
+
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.connection.ClusterSlotHashUtil;
+import org.springframework.data.redis.connection.DataType;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import redis.clients.jedis.*;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @SpringBootTest
 class HmDianPingApplicationTests {
@@ -156,5 +166,91 @@ class HmDianPingApplicationTests {
         Thread.sleep(20);
         String ans=cache.getIfPresent("gf");
         cache.get("gf",(key)->{return "elsemethod";});
+    }
+        private static final int BIG_KEY_THRESHOLD = 1000;
+        private static final int TOP_N = 10;
+
+        private final ExecutorService executor = Executors.newFixedThreadPool(4);
+
+
+    @Test
+    public void scanBigKeys() {
+        Map<String, Long> keySizes = new HashMap<>();
+        final ScanOptions scanOptions = ScanOptions.scanOptions().count(100).build();
+
+        redis.execute((RedisCallback<Void>) connection -> {
+            Cursor<byte[]> cursor = connection.scan(scanOptions);
+            while (cursor.hasNext()) {
+                String key = new String(cursor.next());
+                long size = getKeySize(connection, key);
+                keySizes.put(key, size);
+
+                if (size >= BIG_KEY_THRESHOLD) {
+                    final String delKey = key;
+                    final long delSize = size;
+                    executor.submit(() -> asyncDelete(delKey, delSize));
+                }
+            }
+            return null;
+        });
+
+        printTopNKeys(keySizes);
+        executor.shutdown();
+    }
+
+    // 获取 key 的大小
+    private long getKeySize(RedisConnection connection, String key) {
+        DataType type = connection.type(key.getBytes());
+        switch (type) {
+            case STRING:
+                return connection.strLen(key.getBytes());
+            case LIST:
+                return connection.lLen(key.getBytes());
+            case SET:
+                return connection.sCard(key.getBytes());
+            case ZSET:
+                return connection.zCard(key.getBytes());
+            case HASH:
+                return connection.hLen(key.getBytes());
+            default:
+                return 0;
+        }
+    }
+
+    // 异步删除
+    private void asyncDelete(String key, long size) {
+        redis.delete(key);
+        System.out.println("Deleted big key asynchronously: " + key + ", size=" + size);
+    }
+
+    // 打印 top N
+    private void printTopNKeys(Map<String, Long> keySizes) {
+        int topN = 10;
+        keySizes.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
+                .limit(topN)
+                .forEach(e -> System.out.println("Key=" + e.getKey() + ", Size=" + e.getValue()));
+    }
+    @Test
+    public  void pipeline(){
+            Pipeline pipeline=new Pipeline();
+            for(int i=0;i<1000;i++){
+                pipeline.set("key"+i,i+"");
+                pipeline.sync();
+            }
+        }
+    @Test
+    public void testpipelineSlot(){
+        Pipeline pipeline=new Pipeline();
+        Map<String,String> map=new HashMap<>();
+        Map<Integer,List<Map.Entry<String,String>>> map1=map.entrySet().stream().collect(Collectors.groupingBy(
+                enrty->ClusterSlotHashUtil.calculateSlot(enrty.getKey())
+        ));
+        for(List<Map.Entry<String,String>> m:map1.values()){
+            for(int i=0;i<m.size();i++){
+                pipeline.set(m.get(i).getKey(),m.get(i).getValue());
+            }
+            pipeline.sync();
+        }
     }
 }
